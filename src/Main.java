@@ -1,5 +1,4 @@
 import javafx.util.Pair;
-
 import java.math.BigInteger;
 import java.util.*;
 
@@ -15,6 +14,7 @@ public class Main {
          * Get a message for encryption
          */
         Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter message");
         BigInteger m = new BigInteger(String.valueOf(scanner.nextInt()));
 
         /**
@@ -23,24 +23,21 @@ public class Main {
         BigInteger p = randPrime(m);
 
         /**
-         * Get random number g primitive root modulo p.
+         * Get random number g primitive root modulo p
          */
         BigInteger g = getPRoot(p);
 
         int voters = 5; //number of voters
 
-        BigInteger[] arrX = new BigInteger[voters]; //secret key array
-        BigInteger[] arrY = new BigInteger[voters]; //public key array
+        /**
+         * Public key array
+         */
+        BigInteger[] arrY = new BigInteger[voters];
 
         /**
-         * Generating keys for each voter
+         * Generating keys for each voter, return only public keys
          */
-        for (int i = 0; i < voters; i++) {
-            System.out.println("  ");
-
-            arrX[i] = rand(p); // Secret key for Ti
-            arrY[i] = pow(g, arrX[i]).mod(p); // Public key for Ti
-        }
+        arrY = genKeys(g,p,voters);
 
         /**
          * General Public key Y
@@ -54,13 +51,15 @@ public class Main {
         Pair<BigInteger, BigInteger> pair = encrypt(m, g, Y, p);
 
         /**
-         * Each voter calculates di
+         * Each voter enters di
          */
         BigInteger[] arrD = new BigInteger[voters];
 
-        for (int i = 0; i < voters; i++) {
-            arrD[i] = pow(pair.getKey(), arrX[i]).mod(p);
-        }
+        arrD = enterD(voters);
+
+//        for (int i = 0; i < voters; i++) {
+//            arrD[i] = pow(pair.getKey(), arrX[i]).mod(p);
+//        }
 
         /**
          * Calculated multiplication of arrD[i]
@@ -79,6 +78,24 @@ public class Main {
     }
 
     /**
+     * Encrypt message
+     *
+     * @param m message to encrypt
+     * @param g random number
+     * @param y private key
+     * @param p module
+     * @return encrypted message
+     */
+    private Pair<BigInteger, BigInteger> encrypt(BigInteger m, BigInteger g, BigInteger y, BigInteger p)
+    {
+        BigInteger r = rand(p);
+        return new Pair<>(
+                pow(g, r).mod(p),
+                m.multiply(pow(y, r).mod(p))
+        );
+    }
+
+    /**
      * Decrypt message
      *
      * @param pair pair of keys (a,b)
@@ -86,22 +103,49 @@ public class Main {
      * @param p    module
      * @return decrypted message
      */
-    private BigInteger decrypt(Pair<BigInteger, BigInteger> pair, BigInteger D, BigInteger p) {
-        return ((pair.getValue()
-                .multiply(getMod(pow(D, BigInteger.ONE), p)))
-                .mod(p) );
+    private BigInteger decrypt(Pair<BigInteger, BigInteger> pair, BigInteger D, BigInteger p)
+    {
+        return ((pair.getValue().multiply(getMod(pow(D, BigInteger.ONE), p))).mod(p) );
     }
 
+
+    private BigInteger[] genKeys (BigInteger g, BigInteger p, int voters) {
+        /**
+         * Secret and public key arrays
+         */
+        BigInteger[] arrX = new BigInteger[voters];
+        BigInteger[] arrY = new BigInteger[voters];
+
+        /**
+         * Generating keys for each voter
+         */
+        for (int i = 0; i < voters; i++) {
+            arrX[i] = rand(p); // Secret key for Ti
+            arrY[i] = pow(g, arrX[i]).mod(p); // Public key for Ti
+        }
+        return arrY;
+    }
+
+    private BigInteger[] enterD (int voters) {
+        Scanner scanner = new Scanner(System.in);
+        BigInteger[] arrD = new BigInteger[voters];
+        System.out.println("Enter each d");
+        for (int i = 0; i < voters; i++) {
+            arrD[i] = new BigInteger(String.valueOf(scanner.nextLong()));
+        }
+        return arrD;
+    }
 
     /**
      * Get random prime BigInteger from (m,m+1000)
      * @param m low border
      * @return random prime BigInteger
      */
-    private BigInteger randPrime(BigInteger m) {
-        BigInteger number = rand2(m);
+    private BigInteger randPrime(BigInteger m)
+    {
+        BigInteger number = randInterval(m);
         while (!number.isProbablePrime(100)) {
-            number = rand2(m);
+            number = randInterval(m);
         }
         return number;
     }
@@ -113,7 +157,8 @@ public class Main {
      * @param m low border
      * @return rand BigInteger (m,m+1000)
      */
-    private BigInteger rand2(BigInteger m) {
+    private BigInteger randInterval(BigInteger m)
+    {
         Random r = new Random();
         int low = m.intValue();
         int max = m.intValue() + 1000;
@@ -142,30 +187,14 @@ public class Main {
     }
 
     /**
-     * Encrypt message
-     *
-     * @param m message to encrypt
-     * @param g random number
-     * @param y private key
-     * @param p module
-     * @return encrypted message
-     */
-    private Pair<BigInteger, BigInteger> encrypt(BigInteger m, BigInteger g, BigInteger y, BigInteger p) {
-        BigInteger r = rand(p);
-        return new Pair<>(
-                pow(g, r).mod(p),
-                m.multiply(pow(y, r).mod(p))
-        );
-    }
-
-    /**
      * finds pow from BigIntegers
      *
      * @param base     power from
      * @param exponent power to
      * @return base^exponent
      */
-    private static BigInteger pow(BigInteger base, BigInteger exponent) {
+    private static BigInteger pow(BigInteger base, BigInteger exponent)
+    {
         BigInteger result = BigInteger.ONE;
         while (exponent.signum() > 0) {
             if (exponent.testBit(0)) result = result.multiply(base);
@@ -182,7 +211,9 @@ public class Main {
      * @return P Root for p
      */
     private static BigInteger getPRoot(BigInteger p) {
-        for (BigInteger i = BigInteger.ZERO; i.compareTo(p) < 0; i = i.add(BigInteger.ONE))
+        for (BigInteger i = BigInteger.ZERO;
+             i.compareTo(p) < 0;
+             i = i.add(BigInteger.ONE))
             if (isPRoot(p, i))
                 return i;
         return BigInteger.ZERO;
@@ -200,9 +231,12 @@ public class Main {
         BigInteger last = BigInteger.ONE;
 
         Set<BigInteger> set = new HashSet<>();
-        for (BigInteger i = BigInteger.ZERO; i.compareTo(p.subtract(BigInteger.ONE)) < 0; i = i.add(BigInteger.ONE)) {
+        for (BigInteger i = BigInteger.ZERO;
+             i.compareTo(p.subtract(BigInteger.ONE)) < 0;
+             i = i.add(BigInteger.ONE))
+        {
             last = (last.multiply(a)).mod(p);
-            if (set.contains(last)) // Если повтор
+            if (set.contains(last))
                 return false;
             set.add(last);
         }
